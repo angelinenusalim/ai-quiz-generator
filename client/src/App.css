@@ -15,7 +15,7 @@ body {
   background-color: #ffe3ea;
   min-height: 100vh;
   overflow-x: hidden;
-  background-image: url("/ai_quiz_background") !important; 
+  background-image: url("/ai_quiz_background.png") !important; 
 
 }
 

@@ -1,5 +1,7 @@
 import ReactMarkdown from "react-markdown";
 import { useState } from "react";
+import "./App.css";
+
 
 export default function App() {
   const [topic, setTopic] = useState("");
@@ -143,7 +145,7 @@ export default function App() {
         boxSizing: "border-box",
         padding: "20px",
         overflowX: "hidden",
-        backgroundImage: `linear-gradient(rgba(255, 227, 234, 0.6), rgba(255, 227, 234, 0.6)), url('/ai_quiz_background')`,
+        backgroundImage: `linear-gradient(rgba(255, 227, 234, 0.6), rgba(255, 227, 234, 0.6)), url('/ai_quiz_background.png')`,
         backgroundSize: "cover",
         backgroundPosition: "center",
         backgroundAttachment: "fixed",
