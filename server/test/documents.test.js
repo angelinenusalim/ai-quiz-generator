@@ -48,10 +48,10 @@ test('XML entity declarations and malformed archives are rejected', async () => 
   await assert.rejects(parseInWorker({ buffer: await zip.generateAsync({ type: 'nodebuffer' }), originalname: 'attack.pptx' }));
 });
 test('large extracted text is rejected explicitly rather than truncated', async () => {
-  await assert.rejects(parseInWorker({ buffer: Buffer.from('x'.repeat(80_001)), originalname: 'large.txt' }), e => e.message.includes('nothing has been truncated'));
+  await assert.rejects(parseInWorker({ buffer: Buffer.from('x'.repeat(1_000_001)), originalname: 'large.txt' }), e => e.message.includes('nothing has been truncated'));
 });
 test('combined extracted text limits are enforced even when individual files fit', async () => {
-  const files = Array.from({ length: 3 }, (_, n) => ({ buffer: Buffer.from('a'.repeat(30_000)), originalname: `${n}.txt` }));
+  const files = Array.from({ length: 3 }, (_, n) => ({ buffer: Buffer.from('a'.repeat(700_000)), originalname: `${n}.txt` }));
   await assert.rejects(processDocuments(files), e => e.code === 'MATERIAL_LIMIT');
   assert.ok(files.every(file => !file.buffer));
 });

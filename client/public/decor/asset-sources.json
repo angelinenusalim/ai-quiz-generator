@@ -1,0 +1,58 @@
+{
+  "pink-bow.png": {
+    "original": "quiz_decor.zip/1.png",
+    "size": [
+      640,
+      618
+    ],
+    "preparation": "Trim blank canvas, resize proportionally, make edge-connected pure white canvas transparent; no illustration redrawing or recoloring."
+  },
+  "bunny-resting.png": {
+    "original": "quiz_decor.zip/2.png",
+    "size": [
+      640,
+      599
+    ],
+    "preparation": "Trim blank canvas, resize proportionally, make edge-connected pure white canvas transparent; no illustration redrawing or recoloring."
+  },
+  "bunny-sitting.png": {
+    "original": "quiz_decor.zip/3.png",
+    "size": [
+      510,
+      640
+    ],
+    "preparation": "Trim blank canvas, resize proportionally, make edge-connected pure white canvas transparent; no illustration redrawing or recoloring."
+  },
+  "bow-cherries.png": {
+    "original": "quiz_decor.zip/4.png",
+    "size": [
+      583,
+      640
+    ],
+    "preparation": "Trim blank canvas, resize proportionally, make edge-connected pure white canvas transparent; no illustration redrawing or recoloring."
+  },
+  "ribbon-books.png": {
+    "original": "quiz_decor.zip/6.png",
+    "size": [
+      640,
+      583
+    ],
+    "preparation": "Trim blank canvas, resize proportionally, make edge-connected pure white canvas transparent; no illustration redrawing or recoloring."
+  },
+  "quiz-label.png": {
+    "original": "quiz_decor.zip/7.png",
+    "size": [
+      640,
+      228
+    ],
+    "preparation": "Trim blank canvas, resize proportionally, make edge-connected pure white canvas transparent; no illustration redrawing or recoloring."
+  },
+  "open-book.png": {
+    "original": "quiz_decor.zip/10.png",
+    "size": [
+      640,
+      523
+    ],
+    "preparation": "Trim blank canvas, resize proportionally, make edge-connected pure white canvas transparent; no illustration redrawing or recoloring."
+  }
+}

@@ -1,8 +1,14 @@
 # AI Quiz Generator
 
-A cozy pink study companion built with React 19, Vite, Node.js, Express, and OpenAI. The original illustrated background, Poppins/Nunito typography, subjects, and difficulty choices are preserved.
+Your little study corner: a cozy pink quiz companion built with React 19, Vite, Node.js, Express, and OpenAI. The original illustrated background, Poppins/Nunito typography, subjects, and difficulty choices are preserved.
 
 Generate quizzes from a topic, study materials, or both. Choose 5, 10, 15, or 20 questions; answer accessible radio options; submit for a deterministic score and explanations; retry the same questions or generate a new set. Settings and selected files remain available until the page is refreshed. Answers are shown after submission, and unanswered questions count against the score.
+
+## Artwork and wording
+
+The decorations come from the user's `quiz_decor.zip`: resting/sitting bunnies, a pink bow, bow-tied cherries, ribbon books, an open book, and the original illustrated quiz label. The original pink background remains. Web assets in `client/public/decor/` are proportionally resized crops; only the edge-connected pure-white canvas is made transparent. Original fur, pages, colors, and drawing details are retained. The supplied ZIP is untouched. [Asset provenance](client/public/decor/asset-sources.json) records the source PNG for every web image.
+
+The bunny favicon (`favicon.ico`, 32/192 px PNGs) and Apple touch icon use the same original resting bunny. Decorations have empty alt text, fixed proportions, and no pointer events; desktop edge decorations are hidden on smaller screens. Warm, conversational headings sit alongside clear labels, scores, and error instructions. App-authored copy has no emojis; generated titles/questions/options/explanations are checked for emoji characters.
 
 ## Requirements and installation
 
@@ -56,24 +62,26 @@ The server uses platform-injected environment variables first. Local `server/.en
 | `.txt`, `.md` | UTF-8 or BOM-marked UTF-16 text; headings and paragraph breaks preserved. References use extracted section numbers. |
 
 - Up to **5 files**, **10 MB per file**, **25 MB total**.
-- Up to **80,000 extracted characters and 1,000 sections per study set**.
-- PPTX: up to **200 slides**; PDF: up to **150 pages**.
+- Up to **1,000,000 extracted characters per file**, **2,000,000 per study set**, and **10,000 readable sections per study set**. These are extraction budgets, not AI input limits.
+- PDF has **no page-count cutoff**. It is extracted in **10-page batches** with page cleanup. PPTX retains its existing **200-slide limit**.
 - Office archives: up to **40 MB expanded**, **2,000 entries**, **5 MB per XML part**. Encrypted archives and XML entity declarations are rejected.
 - Topic length: **300 characters**. Each file must have a unique name, at most 150 characters.
-- Each parser runs in a worker with a **15-second timeout** and bounded JavaScript heap. Requests time out after **180 seconds**; AI calls after **60 seconds**. There are at most two AI attempts.
+- Parsing uses **one worker at a time per server instance**, with **192 MB old-generation / 32 MB young-generation JavaScript heap limits**. PDFs have a **45-second extraction timeout**; other formats retain **15 seconds**. The whole study set has a **60-second processing budget**, including queueing; a parser queue wait beyond **10 seconds** returns a busy error. Worker termination is awaited before the next parser starts. These heap limits do not cap native PDF-library memory. Requests time out after **180 seconds**; AI calls after **60 seconds**. There are at most two AI attempts.
 - Generation is limited to **10 requests per 10 minutes per client IP**, and **3 simultaneous requests per server instance**.
 
-Files remain in memory only; no upload directory or permanent storage is created. Buffers are released after processing and workers are terminated. Extracted text is sent to OpenAI, with `store: false` on the Responses request; provider data policies still apply. The application does not log document text or API responses.
+Files remain in memory only; no upload directory or permanent storage is created. Buffers are released after processing and workers are terminated. Selected text is sent to OpenAI, with `store: false` on the Responses request; provider data policies still apply. The application does not log document text or API responses.
 
 Image-only/scanned PDFs and images in slides are **not OCR'd**. Blank slides/pages in mixed documents produce visible warnings; completely unreadable files fail. Password-protected and corrupted files fail with file-specific errors. Embedded charts, equations rendered as images, and SmartArt content outside slide text may not be extracted. The app does not claim these were read.
 
-If any file fails, **the entire batch is rejected**. The error identifies failed and successfully read filenames. Remove or replace failed files and retry. Large documents are rejected explicitly; text is never silently truncated. All supported text is split into labeled sections and supplied in one bounded AI context, avoiding extra summarization calls.
+If any file fails, **the entire batch is rejected**. The error identifies failed and successfully read filenames. Remove or replace failed files and retry. Resource-budget failures explain the actual text, section, memory, or time constraint; extraction is never silently truncated. Small materials are passed in full when they fit. Larger materials are examined locally in chunks of up to 10 sections or about 12,000 characters. Exact passages are ranked by informative terms, explanatory cues, and topic relevance, then selected with anchors and coverage across the beginning, middle, and end. Each file receives a fair share of a **64,000-character JSON study-material context budget**. This is an extractive heuristic, not a guarantee that every important concept is selected. The UI discloses selection counts and warns that the quiz does not test every page or concept. There are no per-chunk AI calls or invented summaries; generation uses one request with at most one validation retry. Page numbers and source identities remain attached to the selected passages. Text sections longer than 1,500 characters are split into exact citable fragments with unique IDs; all fragments are retained when the small document fits.
 
 ## Generation and grounding
 
+Topic-only requests explicitly use general knowledge with no uploaded sources; files-only requests infer the topic from the material; combined requests prioritize the material and use the topic as a focus. A missing-input error is shown only when both the topic and files are absent. If the model incorrectly demands materials for a topic-only quiz, that response is rejected and retried.
+
 The server uses the [OpenAI Responses API with strict structured outputs](https://developers.openai.com/api/docs/guides/structured-outputs?api-mode=responses), then validates both the schema and application rules. It requires the exact question count, unique question IDs, distinct options and question text, a valid answer letter, and the selected subject/difficulty. Incomplete and invalid output cannot become a successful quiz; recoverable failures get one retry.
 
-Uploaded content is JSON-encoded as untrusted study data, separate from application instructions. The AI must ground every document-based question in supplied text. Every citation is checked against an actual section, including its filename, slide/page/section number, and a verbatim supporting quotation. Without a topic, every uploaded document must be cited at least once; with a narrowing topic, files that were read but not cited are disclosed. A minimum-text check and the model's explicit insufficient-material response prevent partial quizzes being treated as complete.
+Uploaded content is JSON-encoded as untrusted study data, separate from application instructions. The server assigns each question ID to a supplied source passage before generation, balancing files and document bands. The AI must write each question and explanation from that assigned passage and returns no citation metadata. The server attaches the original filename, page/slide/section number, and exact assigned passage as the supporting quote. This avoids fabricated or mistyped model citations while preserving the public quiz response. Every citation is checked against an actual section, including its filename, slide/page/section number, and a verbatim supporting quotation from the passage actually supplied to the model. Without a topic, every uploaded document must be cited at least once; excerpted files must also cite their beginning, middle, and end when there are at least three questions per file; with a narrowing topic, files that were read but not cited are disclosed. A minimum-text check and the model's explicit insufficient-material response prevent partial quizzes being treated as complete.
 
 These checks establish structural correctness and citation existence. They cannot guarantee semantic correctness of every generated answer or that a quotation fully supports an explanation. Review AI questions before using them for high-stakes assessment.
 
@@ -125,9 +133,9 @@ Live OpenAI smoke tests (use actual API credit):
 npm run test:live --prefix server
 ```
 
-This covers Operating Systems with 10 questions, PPTX-only, PDF-only, mixed materials, and a Leader Election focus. It refuses to run without a configured key. Inspect generated educational quality separately: automated checks validate structure and references, not every fact.
+This covers Operating Systems with 10 questions, PPTX-only, small PDF-only, mixed PPTX/PDF, a 180-page PDF with citations across all thirds, combined DOCX/Markdown, and a Leader Election focus. To reuse the existing linked Railway credentials without saving them locally, run `railway run --service divine-achievement --environment production npm run test:live --prefix server`. It refuses to run without a configured key. Inspect generated educational quality separately: automated checks validate structure and references, not every fact.
 
-See [VERIFICATION.md](VERIFICATION.md) for the tests actually executed in this implementation and the remaining live verification gap.
+See [VERIFICATION.md](VERIFICATION.md) for the tests actually executed in this implementation and the limits of local verification.
 
 ## Deployment
 
@@ -140,7 +148,7 @@ npm ci --prefix server --omit=dev
 npm start --prefix server
 ```
 
-Configure the server environment and let the host provide `PORT`. Set `ALLOWED_ORIGINS` to your frontend's exact HTTPS origin. If behind a known proxy, set `TRUST_PROXY_HOPS` to its hop count. Limit ingress to 25 MB plus multipart overhead and allow 190-second upstream requests where the platform supports them. Platform timeouts may be shorter; reduce material size/question count for those hosts. Memory usage is bounded per request, but provision enough for three document workers and uploaded buffers.
+Configure the server environment and let the host provide `PORT`. Set `ALLOWED_ORIGINS` to your frontend's exact HTTPS origin. If behind a known proxy, set `TRUST_PROXY_HOPS` to its hop count. Limit ingress to 25 MB plus multipart overhead and allow 190-second upstream requests where the platform supports them. Platform timeouts may be shorter; reduce material size/question count for those hosts. Provision memory for the server, at most one parser worker, native PDF-library allocations, and up to three in-flight upload sets. JavaScript heap caps alone cannot guarantee a particular Railway plan’s total memory usage; monitor real deployment memory with your own materials.
 
 Frontend:
 

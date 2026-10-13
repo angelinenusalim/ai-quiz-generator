@@ -11,13 +11,14 @@ h2 { font-size: 1.35rem; line-height: 1.5; color: #7d4357; font-weight: 600; }
 .helper { color: #7c626c; font-size: .875rem; line-height: 1.6; margin-top: 7px; }
 .settings-fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
 .settings-grid { display: grid; grid-template-columns: 1.35fr 1fr 1fr; gap: 16px; margin-bottom: 24px; }
-.settings-grid > div { min-width: 0; }
+.settings-grid > div { min-width: 0; display: flex; flex-direction: column; }
+.settings-grid select { margin-top: auto; }
 .optional { font-family: 'Nunito', sans-serif; color: #80616c; font-size: .75rem; font-weight: 400; margin-left: 5px; }
 .upload-section { border-top: 1px solid #f0dce3; margin-top: 25px; padding-top: 24px; }
 .upload-section h2 { font-size: 1rem; }
 .drop-zone { margin-top: 16px; padding: 24px 12px 18px; border: 2px dashed #dc9eb5; border-radius: 16px; text-align: center; background: #fff1f6; transition: border-color .18s, background .18s; }
 .drop-zone.dragging { border-color: #9e3f63; background: #ffe3ef; }
-.upload-icon { display: inline-grid; place-items: center; width: 40px; height: 40px; background: #ffe0eb; border-radius: 12px; font-size: 1.5rem; color: #99445f; margin-bottom: 10px; }
+.upload-art { display: block; width: 84px; height: auto; margin: 0 auto 12px; pointer-events: none; }
 .drop-zone > p:first-of-type { font-weight: 700; margin-bottom: 12px; }
 .secondary { background: #fffafd; border-color: #ba7e93; color: #89455e; }
 .secondary:hover:enabled { background: #ffe3ee; }
@@ -32,7 +33,7 @@ h2 { font-size: 1.35rem; line-height: 1.5; color: #7d4357; font-weight: 600; }
 .file-info { min-width: 0; flex: 1; }
 .file-info strong { display: block; overflow-wrap: anywhere; font-size: .85rem; }
 .file-info span { font-size: .75rem; color: #7c626c; }
-.remove-file { color: #89455e; background: transparent; font-size: 1.5rem; padding: 4px 12px; min-width: 44px; flex-shrink: 0; }
+.remove-file { color: #89455e; background: transparent; font-size: .75rem; padding: 4px 10px; min-width: 44px; flex-shrink: 0; }
 .remove-file:hover:enabled { background: #ffe0eb; }
 .generate-button { width: 100%; margin-top: 25px; background: #b84e76; box-shadow: 0 4px 13px #c7769026; }
 .loading-panel { margin-top: 18px; text-align: center; }
@@ -80,6 +81,22 @@ summary { cursor: pointer; padding: 5px 0; }
 .submit-panel { text-align: center; }
 .bottom-actions { margin-bottom: 20px; }
 footer { color: #76545f; text-align: center; font-size: .78rem; margin-top: 30px; }
+.brand-art { display: flex; justify-content: center; align-items: center; gap: 14px; margin-bottom: 14px; }
+.brand-bunny { width: 64px; height: auto; pointer-events: none; }
+.brand-label { width: 250px; height: auto; }
+.generator-wrap { width: 100%; max-width: 760px; margin: 0 auto; position: relative; isolation: isolate; }
+.generator { position: relative; z-index: 1; }
+.corner-bunny, .corner-cherries { position: absolute; height: auto; pointer-events: none; user-select: none; z-index: 0; }
+.corner-bunny { width: 156px; left: -115px; top: 90px; transform: rotate(-7deg); }
+.corner-cherries { width: 104px; right: -80px; top: 390px; transform: rotate(8deg); }
+.quiz-bunny { width: 62px; height: auto; float: right; margin: 0 0 12px 18px; pointer-events: none; }
+.results-bunny { display: block; width: 86px; height: auto; margin: 0 auto 12px; pointer-events: none; }
+.results .score-summary { font-family: 'Poppins', sans-serif; font-size: 1.25rem; color: #7d4357; font-weight: 600; }
+.empty-notes { margin-top: 12px; }
+.heading-bow { display: inline-block; width: 24px; height: auto; vertical-align: middle; margin-left: 10px; pointer-events: none; }
+.heading-cherries { display: inline-block; width: 25px; height: auto; vertical-align: middle; margin-right: 9px; pointer-events: none; }
+footer img { display: block; width: 54px; height: auto; margin: 0 auto 10px; pointer-events: none; }
+@media (max-width: 1040px) { .corner-bunny, .corner-cherries { display: none; } }
 @media (max-width: 600px) {
   .app-shell { padding: 30px 14px 20px; background-attachment: scroll; }
   .panel, .question-card { padding: 22px 18px; border-radius: 18px; }
@@ -92,4 +109,9 @@ footer { color: #76545f; text-align: center; font-size: .78rem; margin-top: 30px
   .score-grid { gap: 8px; }
   .optional { display: inline-block; }
   .results h2 { font-size: 1.2rem; }
+  .brand-art { gap: 10px; }
+  .brand-bunny { width: 48px; }
+  .brand-label { width: 190px; max-width: 70%; }
+  .quiz-bunny { width: 48px; margin-left: 12px; }
+  .results .score-summary { font-size: 1.05rem; }
 }

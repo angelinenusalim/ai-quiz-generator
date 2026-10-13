@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url';
 import request from 'supertest';
 import assert from 'node:assert/strict';
 import { createApp } from '../app.js';
-import { pptx, pdf } from './fixtures.js';
+import { pptx, pdf, docx, longPdf, studyText } from './fixtures.js';
 
 dotenv.config({ path: fileURLToPath(new URL('../.env', import.meta.url)), quiet: true });
 if (!process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY === 'your_openai_api_key_here') {
@@ -13,15 +13,18 @@ if (!process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY === 'your_openai_a
 const app = createApp({ rateLimitMax: 30 });
 const slides = await pptx();
 const notes = await pdf();
+const longNotes = await longPdf();
 const cases = [
   { name: 'Topic-only Operating Systems / Intermediate / 10 questions', topic: 'Operating Systems', count: 10, files: [] },
   { name: 'PPTX-only', topic: '', count: 5, files: [[slides, 'lecture.pptx']] },
   { name: 'PDF-only', topic: '', count: 5, files: [[notes, 'notes.pdf']] },
   { name: 'Combined PPTX and PDF', topic: '', count: 5, files: [[slides, 'lecture.pptx'], [notes, 'notes.pdf']] },
+  { name: '180-page PDF with beginning/middle/end coverage', topic: '', count: 5, files: [[longNotes, 'long-lecture.pdf']] },
+  { name: 'DOCX and Markdown together', topic: '', count: 5, files: [[await docx(), 'notes.docx'], [Buffer.from('# Study notes\n\n' + studyText), 'notes.md']] },
   { name: 'Leader Election focus with PPTX', topic: 'Leader Election', count: 5, files: [[slides, 'lecture.pptx']] },
 ];
 let failed = false;
-for (const scenario of cases) {
+for (const scenario of cases.filter(c => !process.env.LIVE_CASE_FILTER || c.name.includes(process.env.LIVE_CASE_FILTER))) {
   try {
     const settings = { topic: scenario.topic, subject: 'cs', difficulty: 'intermediate', questionCount: scenario.count };
     let req = request(app).post('/api/generate');
@@ -33,6 +36,13 @@ for (const scenario of cases) {
     assert.equal(response.status, 200, response.body.error?.message || 'Generation failed');
     assert.equal(response.body.quiz.questions.length, scenario.count);
     assert.equal(response.body.metadata.documents.length, scenario.files.length);
+    if (scenario.name.startsWith('180-page')) {
+      assert.equal(response.body.metadata.documents[0].pageCount, 180);
+      assert.equal(response.body.metadata.documents[0].selection.applied, true);
+      const pages = response.body.quiz.questions.map(q => q.sourceReference.sourceNumber);
+      assert.ok(pages.some(n => n <= 60) && pages.some(n => n > 60 && n <= 120) && pages.some(n => n > 120));
+      console.log(`Long-PDF source pages: ${pages.join(', ')}`);
+    }
     console.log(`PASS: ${scenario.name}`);
   } catch (error) {
     failed = true;

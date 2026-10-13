@@ -80,11 +80,11 @@ export function createApp({ env = process.env, generate, processFiles = processD
       const files = req.files || [];
       const settings = validateSettings(req.body, files);
       const documents = await processFiles(files, { signal: req.quizSignal });
-      const { quiz, warnings } = await generator(settings, documents, { signal: req.quizSignal });
+      const { quiz, warnings, selections = [] } = await generator(settings, documents, { signal: req.quizSignal });
       if (req.quizSignal.aborted || res.headersSent) return;
       res.json({ quiz, metadata: {
         sourceMode: documents.length ? 'materials' : 'topic', questionCount: quiz.questions.length,
-        documents: documents.map(d => ({ fileName: d.fileName, characterCount: d.characterCount, sectionCount: d.sections.length })),
+        documents: documents.map(d => ({ fileName: d.fileName, characterCount: d.characterCount, sectionCount: d.sections.length, ...(d.pageCount ? { pageCount: d.pageCount } : {}), selection: selections.find(s => s.fileName === d.fileName) })),
         warnings: [...documents.flatMap(d => d.warnings.map(w => `${d.fileName}: ${w}`)), ...warnings],
       } });
     } catch (error) {

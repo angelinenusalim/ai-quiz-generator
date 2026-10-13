@@ -48,6 +48,20 @@ export async function pdf({ empty = false } = {}) {
   }
   return Buffer.from(await doc.save());
 }
+export async function longPdf({ pages = 180 } = {}) {
+  const doc = await PDFDocument.create();
+  const font = await doc.embedFont(StandardFonts.Helvetica);
+  for (let index = 0; index < pages; index++) {
+    const band = Math.min(2, Math.floor(index * 3 / pages));
+    const concept = [
+      'Replication improves availability by keeping copies of data on multiple nodes.',
+      'A quorum requires a majority of votes, preventing disjoint groups from electing conflicting leaders.',
+      'Idempotency prevents duplicate work by recognising repeated request identifiers.',
+    ][band];
+    doc.addPage().drawText(`Lecture page ${index + 1}\n${concept.match(/.{1,70}(?:\s|$)/g).join('\n')}\n\n${studyText.split('\n').slice(band * 7, band === 2 ? 20 : (band + 1) * 7).join('\n')}\n\n${studyText.split('\n').slice(band * 7, band === 2 ? 20 : (band + 1) * 7).join('\n')}\n\n${index === pages - 1 ? 'Final concept: checkpoints save state to reduce recovery work.' : 'Compare the concepts and consider how nodes recover after failure.'}`, { x: 30, y: 780, font, size: 9, lineHeight: 22 });
+  }
+  return Buffer.from(await doc.save());
+}
 export async function docx() {
   const zip = new JSZip();
   zip.file('[Content_Types].xml', '<Types><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>');
@@ -69,5 +83,5 @@ export function quizFixture(settings, documents = []) {
     }),
   };
 }
-export function completedResponse(quiz) { return { status: 'completed', output: [], output_text: JSON.stringify({ status: 'ready', reason: null, quiz }) }; }
+export function completedResponse(quiz) { return { status: 'completed', output: [], output_text: JSON.stringify({ status: 'ready', reason: null, quiz: { ...quiz, questions: quiz.questions.map(q => ({ ...q, sourceReference: null })) } }) }; }
 export function mockClient(handler) { return { responses: { create: handler } }; }

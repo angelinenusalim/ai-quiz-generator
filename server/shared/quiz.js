@@ -7,7 +7,9 @@ export const DIFFICULTIES = { beginner: 'Beginner', intermediate: 'Intermediate'
 export const QUESTION_COUNTS = [5, 10, 15, 20];
 export const LIMITS = {
   files: 5, fileBytes: 10 * 1024 * 1024, totalBytes: 25 * 1024 * 1024,
-  textCharacters: 80_000, sections: 1000, topicCharacters: 300,
+  textCharacters: 2_000_000, documentTextCharacters: 1_000_000, sections: 10_000,
+  contextCharacters: 64_000, pdfBatchPages: 10, pdfTimeoutMs: 45_000,
+  materialTimeoutMs: 60_000, topicCharacters: 300,
 };
 export const FILE_TYPES = {
   pptx: ['application/vnd.openxmlformats-officedocument.presentationml.presentation'],
@@ -17,6 +19,7 @@ export const FILE_TYPES = {
 };
 export const extensionOf = (name) => name.split('.').pop().toLowerCase();
 export const normalizeText = (text) => text.replace(/\s+/gu, ' ').trim();
+export const containsEmoji = (text) => /\p{Extended_Pictographic}|\p{Regional_Indicator}|[\uFE0F\u20E3]/u.test(text);
 
 const string = { type: 'string' };
 const object = (properties) => ({ type: 'object', properties, required: Object.keys(properties), additionalProperties: false });
@@ -47,9 +50,11 @@ export function validateQuiz(quiz, settings, documents) {
     throw new Error('The quiz does not match the requested settings.');
   }
   const ids = new Set();
+  if (containsEmoji(quiz.title)) throw new Error('The quiz contains emoji characters.');
   const questions = new Set();
   const sources = documents && new Map(documents.flatMap(d => d.sections.map(s => [s.sectionId, { ...s, fileName: d.fileName }])));
   const usedFiles = new Set();
+  const usedBands = new Set();
   for (const q of quiz.questions) {
     if (!nonempty(q.id, 40) || ids.has(q.id) || !nonempty(q.question, 2000) || q.type !== 'multiple_choice' ||
         !nonempty(q.explanation, 3000) || !Array.isArray(q.options) || q.options.length !== 4) throw new Error('The quiz contains an invalid question.');
@@ -62,6 +67,7 @@ export function validateQuiz(quiz, settings, documents) {
         !q.options.every(o => nonempty(o.text, 1500)) || new Set(q.options.map(o => normalizeText(o.text).toLowerCase())).size !== 4) {
       throw new Error('The quiz contains invalid answer options.');
     }
+    if ([q.question, q.explanation, ...q.options.map(o => o.text)].some(containsEmoji)) throw new Error('The quiz contains emoji characters.');
     if (q.sourceReference !== null) {
       const r = q.sourceReference;
       if (!r || !nonempty(r.fileName, 150) || !nonempty(r.sectionId, 60) || !['slide', 'page', 'section'].includes(r.sourceType) ||
@@ -77,11 +83,19 @@ export function validateQuiz(quiz, settings, documents) {
           throw new Error('The quiz cites material that was not supplied.');
         }
         usedFiles.add(r.fileName);
+        if (source.coverageBand) usedBands.add(`${r.fileName}:${source.coverageBand}`);
       }
     }
   }
   if (documents?.length && !settings.topic && documents.some(d => !usedFiles.has(d.fileName))) {
     throw new Error('The quiz must cover every uploaded document.');
+  }
+  if (documents?.length && !settings.topic && settings.questionCount >= documents.length * 3) {
+    for (const d of documents.filter(d => d.selection?.applied)) {
+      for (const band of new Set(d.sections.map(s => s.coverageBand))) {
+        if (!usedBands.has(`${d.fileName}:${band}`)) throw new Error('The quiz must cover the beginning, middle, and end of excerpted material.');
+      }
+    }
   }
   return quiz;
 }

@@ -10,6 +10,6 @@ export function validateSettings(body, files = []) {
   if (typeof difficulty !== 'string' || !Object.hasOwn(DIFFICULTIES, difficulty)) throw new AppError(400, 'INVALID_DIFFICULTY', 'Choose Beginner, Intermediate, or Advanced.');
   const count = typeof questionCount === 'string' && /^(5|10|15|20)$/.test(questionCount) ? Number(questionCount) : questionCount;
   if (!QUESTION_COUNTS.includes(count)) throw new AppError(400, 'INVALID_COUNT', 'Choose 5, 10, 15, or 20 questions.');
-  if (!topic.trim() && files.length === 0) throw new AppError(400, 'MISSING_MATERIAL', 'Enter a topic or upload study materials.');
+  if (!topic.trim() && files.length === 0) throw new AppError(400, 'MISSING_MATERIAL', 'Add a topic or upload study notes to make your quiz.');
   return { topic: topic.trim(), subject, difficulty, questionCount: count };
 }

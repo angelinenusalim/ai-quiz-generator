@@ -51,3 +51,15 @@ test('scoring is deterministic for all correct, wrong, partial, and unanswered',
   assert.deepEqual(scoreQuiz(quiz, { q1: 'A', q2: 'A' }), { correct: 1, incorrect: 1, unanswered: 8, total: 10, percentage: 10 });
   assert.deepEqual(scoreQuiz(quiz, {}), { correct: 0, incorrect: 0, unanswered: 10, total: 10, percentage: 0 });
 });
+test('generated quiz copy cannot introduce emojis into the interface', () => {
+  for (const mutate of [
+    q => q.title += '\u{1F380}',
+    q => q.questions[0].question += '\u{1F430}',
+    q => q.questions[0].options[0].text += '\u{1F353}',
+    q => q.questions[0].explanation += '\u{1F389}',
+  ]) {
+    const quiz = quizFixture(settings);
+    mutate(quiz);
+    assert.throws(() => validateQuiz(quiz, settings, []), /emoji/);
+  }
+});

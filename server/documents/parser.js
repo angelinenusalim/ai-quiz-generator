@@ -3,6 +3,7 @@ import path from 'node:path';
 import { XMLParser, XMLValidator } from 'fast-xml-parser';
 import { LIMITS, extensionOf } from '../shared/quiz.js';
 import { AppError } from '../errors.js';
+import { extractPdfPages } from './pdf.js';
 
 const orderedParser = new XMLParser({ preserveOrder: true, ignoreAttributes: false, trimValues: false, parseTagValue: false, processEntities: true });
 const plainParser = new XMLParser({ ignoreAttributes: false, parseTagValue: false });
@@ -171,16 +172,7 @@ async function pdf(buffer) {
   const { PDFParse } = await import('pdf-parse');
   const parser = new PDFParse({ data: new Uint8Array(buffer), verbosity: 0, isEvalSupported: false });
   try {
-    const info = await parser.getInfo();
-    if (info.total > 150) throw new AppError(422, 'DOCUMENT_LIMIT', 'Use PDFs with at most 150 pages.');
-    const result = await parser.getText();
-    const sections = [];
-    const warnings = [];
-    for (const page of result.pages) {
-      if (page.text.trim()) sections.push({ sourceType: 'page', sourceNumber: page.num, text: page.text.trim() });
-      else warnings.push(`Page ${page.num} has no extractable text; scanned images are not read.`);
-    }
-    return { sections, warnings };
+    return await extractPdfPages(parser);
   } finally { await parser.destroy(); }
 }
 
@@ -200,7 +192,7 @@ export async function parseDocument(buffer, fileName) {
     result = { sections: textSections(text), warnings: [] };
   } else throw new AppError(415, 'UNSUPPORTED_FILE', 'Unsupported document type.');
   const characterCount = result.sections.reduce((sum, s) => sum + s.text.length, 0);
-  if (!characterCount) throw new AppError(422, 'EMPTY_DOCUMENT', 'No readable text was found. Use a text-based file; scanned pages and slide images need OCR before uploading.');
-  if (characterCount > LIMITS.textCharacters || result.sections.length > LIMITS.sections) throw new AppError(422, 'DOCUMENT_LIMIT', 'The material exceeds 80,000 extracted characters or 1,000 sections. Split it into smaller study sets; nothing has been truncated.');
+  if (!characterCount) throw new AppError(422, 'EMPTY_DOCUMENT', 'We couldn’t find readable text in this file. If the pages are scans or images, run OCR before uploading it.');
+  if (characterCount > LIMITS.documentTextCharacters || result.sections.length > LIMITS.sections) throw new AppError(422, 'DOCUMENT_LIMIT', `This file exceeds the extraction budget of ${LIMITS.documentTextCharacters.toLocaleString('en-US')} characters or ${LIMITS.sections.toLocaleString('en-US')} sections. Split it into smaller study sets; nothing has been truncated.`);
   return { fileName, ...result, characterCount };
 }

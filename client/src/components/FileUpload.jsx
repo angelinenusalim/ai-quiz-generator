@@ -26,27 +26,28 @@ export default function FileUpload({ files, onChange, disabled }) {
   }
   return (
     <section className="upload-section" aria-labelledby="upload-title">
-      <h2 id="upload-title">Upload Your Study Materials <span className="optional">optional</span></h2>
-      <p className="helper">Upload your lecture slides, notes, or readings, and let AI turn them into a personalized quiz.</p>
+      <h2 id="upload-title"><img className="heading-cherries" src="/decor/bow-cherries.png" alt="" aria-hidden="true" width="583" height="640" />Add your study notes <span className="optional">optional</span></h2>
+      <p className="helper">Lecture slides, notes, or readings are all welcome.</p>
       <div className={`drop-zone ${dragging ? 'dragging' : ''}`}
         onDragOver={event => { event.preventDefault(); if (!disabled) setDragging(true); }}
         onDragLeave={() => setDragging(false)}
         onDrop={event => { event.preventDefault(); setDragging(false); addFiles(event.dataTransfer.files); }}>
-        <span className="upload-icon" aria-hidden="true">↑</span>
-        <p>Drop your study files here</p>
-        <button type="button" className="secondary" disabled={disabled} onClick={() => input.current.click()}>Browse files</button>
-        <input ref={input} className="sr-only" tabIndex={-1} aria-label="Study materials" type="file" multiple accept=".pptx,.pdf,.docx,.txt,.md" disabled={disabled}
+        <img className="upload-art" src="/decor/open-book.png" alt="" aria-hidden="true" width="640" height="523" />
+        <p>Drop files here or browse to choose them</p>
+        <button type="button" className="secondary" disabled={disabled} onClick={() => input.current.click()}>browse my notes</button>
+        <input ref={input} className="sr-only" tabIndex={-1} aria-hidden="true" aria-label="Study materials" type="file" multiple accept=".pptx,.pdf,.docx,.txt,.md" disabled={disabled}
           onChange={event => { addFiles(event.target.files); event.target.value = ''; }} />
         <p className="helper upload-limits">PPTX, PDF, DOCX, TXT, MD · 5 files max<br />10 MB per file · 25 MB total</p>
       </div>
-      <p className="helper privacy-note">Files are processed temporarily. Extracted text is sent to OpenAI to create your quiz. Scanned pages and images need OCR first.</p>
+      <p className="helper privacy-note">Files are processed temporarily. Selected text is sent to OpenAI to create your quiz. Scanned pages and images need OCR first.</p>
+      {!files.length && <p className="helper empty-notes">Studying from a topic? You can leave this empty.</p>}
       {!!errors.length && <div className="error compact" role="alert"><ul>{errors.map((error, index) => <li key={index}>{error}</li>)}</ul></div>}
       {!!files.length && <>
-        <div className="file-list-heading"><span>{files.length} {files.length === 1 ? 'file' : 'files'} selected</span><button type="button" className="text-button" disabled={disabled} onClick={() => { onChange([]); setErrors([]); }}>Clear all files</button></div>
+        <div className="file-list-heading"><span>{files.length} {files.length === 1 ? 'file' : 'files'} selected</span><button type="button" className="text-button" disabled={disabled} onClick={() => { onChange([]); setErrors([]); }}>clear my notes</button></div>
         <ul className="file-list">{files.map(file => <li key={file.name}>
           <span className="file-type" aria-hidden="true">{extensionOf(file.name).toUpperCase()}</span>
           <div className="file-info"><strong>{file.name}</strong><span>{formatSize(file.size)}</span></div>
-          <button type="button" className="remove-file" aria-label={`Remove ${file.name}`} disabled={disabled} onClick={() => onChange(files.filter(f => f !== file))}>×</button>
+          <button type="button" className="remove-file" aria-label={`Remove ${file.name}`} disabled={disabled} onClick={() => onChange(files.filter(f => f !== file))}>remove</button>
         </li>)}</ul>
       </>}
     </section>

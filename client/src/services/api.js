@@ -16,7 +16,7 @@ export async function requestQuiz(settings, files, { signal, onStage = () => {} 
     body = JSON.stringify(settings);
     headers['Content-Type'] = 'application/json';
   }
-  onStage(files.length ? 'Reading your study materials and creating your quiz…' : 'Creating your quiz…');
+  onStage(files.length ? 'Reading your notes and putting the quiz together...' : 'Putting your quiz together...');
   try {
     const response = await fetch(`${baseUrl}/api/generate`, { method: 'POST', headers, body, signal: requestSignal });
     let data;
@@ -30,7 +30,7 @@ export async function requestQuiz(settings, files, { signal, onStage = () => {} 
     if (typeof data.quiz === 'string') {
       throw new Error('Your Railway backend is responding, but it still runs the previous quiz API. Deploy the updated server to Railway, then retry. Your existing API key can stay unchanged.');
     }
-    onStage('Checking your quiz…');
+    onStage('Checking your questions and source references...');
     validateQuiz(data.quiz, settings);
     if (!data.metadata || !Array.isArray(data.metadata.documents) || !Array.isArray(data.metadata.warnings)) throw new Error('The quiz server returned incomplete quiz metadata. Please retry.');
     return data;
