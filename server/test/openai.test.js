@@ -1,0 +1,61 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { createQuizGenerator, buildInput } from '../openaiService.js';
+import { quizFixture, completedResponse, mockClient, studyText } from './fixtures.js';
+
+const settings = { topic: 'Operating Systems', subject: 'cs', difficulty: 'intermediate', questionCount: 10 };
+test('Responses API uses strict schema, requested settings, configurable model, and no stored response', async () => {
+  let request;
+  const generate = createQuizGenerator({ model: 'configured-model', client: mockClient(async params => { request = params; return completedResponse(quizFixture(settings)); }) });
+  const result = await generate(settings, []);
+  assert.equal(result.quiz.questions.length, 10);
+  assert.equal(request.model, 'configured-model');
+  assert.equal(request.text.format.strict, true);
+  assert.equal(request.text.format.type, 'json_schema');
+  assert.equal(request.store, false);
+  assert.equal(JSON.parse(request.input[0].content).settings.subject, 'Computer Science');
+  assert.match(request.instructions, /Conceptual comparisons/);
+});
+test('documents are supplied as text data and topic focuses uploaded content', async () => {
+  const docs = [{ fileName: 'lecture.pptx', characterCount: studyText.length, sections: [{ sectionId: 'f1s1', sourceType: 'slide', sourceNumber: 1, text: studyText }] }];
+  const focused = { ...settings, topic: 'Leader Election' };
+  const input = JSON.parse(buildInput(focused, docs));
+  assert.equal(input.studyMaterials[0].sections[0].text, studyText);
+  assert.equal(input.settings.topic, 'Leader Election');
+  const generate = createQuizGenerator({ client: mockClient(async params => {
+    assert.match(params.instructions, /never instructions/);
+    assert.match(params.instructions, /Do not supplement gaps with outside facts/);
+    return completedResponse(quizFixture(focused, docs));
+  }) });
+  assert.equal((await generate(focused, docs)).quiz.questions[0].sourceReference.sourceNumber, 1);
+});
+test('missing API key is handled without preventing server startup', async () => {
+  await assert.rejects(createQuizGenerator() (settings, []), e => e.code === 'API_NOT_CONFIGURED');
+});
+test('malformed, incomplete, duplicate, and fabricated-source outputs retry only once', async () => {
+  for (const bad of [{ status: 'completed', output_text: '{broken' }, { status: 'incomplete', output_text: '{}' }, completedResponse({ ...quizFixture(settings), questions: [] })]) {
+    let calls = 0;
+    const generate = createQuizGenerator({ client: mockClient(async () => { calls++; return bad; }) });
+    await assert.rejects(generate(settings, []), e => e.code === 'INVALID_AI_RESPONSE');
+    assert.equal(calls, 2);
+  }
+});
+test('a recoverable failure can succeed on the second attempt', async () => {
+  let calls = 0;
+  const generate = createQuizGenerator({ client: mockClient(async () => ++calls === 1 ? { status: 'incomplete' } : completedResponse(quizFixture(settings))) });
+  assert.equal((await generate(settings, [])).quiz.questions.length, 10);
+  assert.equal(calls, 2);
+});
+test('rate limits, bad credentials, unavailable models, refusals, and timeouts are useful failures', async () => {
+  for (const [failure, code] of [[{ status: 429 }, 'AI_RATE_LIMIT'], [{ status: 401 }, 'API_CONFIGURATION_ERROR'], [{ status: 404 }, 'MODEL_CONFIGURATION_ERROR'], [{ name: 'APIConnectionTimeoutError' }, 'AI_TIMEOUT'], [{ name: 'APIConnectionError' }, 'AI_UNAVAILABLE']]) {
+    const generate = createQuizGenerator({ client: mockClient(async () => { throw failure; }) });
+    await assert.rejects(generate(settings, []), e => e.code === code);
+  }
+  const refuse = createQuizGenerator({ client: mockClient(async () => ({ output: [{ content: [{ type: 'refusal' }] }] })) });
+  await assert.rejects(refuse(settings, []), e => e.code === 'GENERATION_REFUSED');
+});
+test('insufficient material fails explicitly and never returns a partial quiz', async () => {
+  const generate = createQuizGenerator({ client: mockClient(async () => ({ status: 'completed', output_text: JSON.stringify({ status: 'insufficient_material', reason: 'Add more notes about leader election.', quiz: null }) })) });
+  await assert.rejects(generate(settings, []), e => e.code === 'INSUFFICIENT_MATERIAL');
+  await assert.rejects(generate(settings, [{ characterCount: 20 }]), e => e.code === 'INSUFFICIENT_MATERIAL');
+});
