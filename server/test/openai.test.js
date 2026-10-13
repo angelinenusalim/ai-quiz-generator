@@ -62,7 +62,8 @@ test('insufficient material fails explicitly and never returns a partial quiz', 
 test('topic-only prompts explicitly use general knowledge and never require study files', () => {
   const input = JSON.parse(buildInput(settings, []));
   assert.equal(input.sourceMode, 'topic');
-  assert.deepEqual(input.studyMaterials, []);
+  assert.equal(Object.hasOwn(input, 'studyMaterials'), false);
+  assert.equal(Object.hasOwn(input, 'questionPlan'), false);
   const prompt = buildInstructions(settings, []);
   assert.match(prompt, /SOURCE MODE: topic/);
   assert.match(prompt, /using your general knowledge/);

@@ -15,6 +15,11 @@ const slides = await pptx();
 const notes = await pdf();
 const longNotes = await longPdf();
 const cases = [
+  { name: 'Biology / Rabbit / no files', topic: 'Rabbit', subject: 'biology', difficulty: 'beginner', count: 10, files: [] },
+  { name: 'Computer Science / Data Structures / no files', topic: 'Data Structures', subject: 'cs', count: 10, files: [] },
+  { name: "Physics / Newton's Laws / no files", topic: "Newton's Laws", subject: 'physics', count: 10, files: [] },
+  { name: 'Mathematics / Algebra / no files', topic: 'Algebra', subject: 'math', count: 10, files: [] },
+  { name: 'Markdown-only', topic: '', count: 5, files: [[Buffer.from('# Study notes\n\n' + studyText), 'notes.md']] },
   { name: 'Topic-only Operating Systems / Intermediate / 10 questions', topic: 'Operating Systems', count: 10, files: [] },
   { name: 'PPTX-only', topic: '', count: 5, files: [[slides, 'lecture.pptx']] },
   { name: 'PDF-only', topic: '', count: 5, files: [[notes, 'notes.pdf']] },
@@ -26,7 +31,7 @@ const cases = [
 let failed = false;
 for (const scenario of cases.filter(c => !process.env.LIVE_CASE_FILTER || c.name.includes(process.env.LIVE_CASE_FILTER))) {
   try {
-    const settings = { topic: scenario.topic, subject: 'cs', difficulty: 'intermediate', questionCount: scenario.count };
+    const settings = { topic: scenario.topic, subject: scenario.subject || 'cs', difficulty: scenario.difficulty || 'intermediate', questionCount: scenario.count };
     let req = request(app).post('/api/generate');
     if (scenario.files.length) {
       for (const [key, value] of Object.entries(settings)) req = req.field(key, String(value));
@@ -36,6 +41,8 @@ for (const scenario of cases.filter(c => !process.env.LIVE_CASE_FILTER || c.name
     assert.equal(response.status, 200, response.body.error?.message || 'Generation failed');
     assert.equal(response.body.quiz.questions.length, scenario.count);
     assert.equal(response.body.metadata.documents.length, scenario.files.length);
+    assert.equal(response.body.metadata.sourceMode, scenario.files.length ? 'materials' : 'topic');
+    if (!scenario.files.length) assert.ok(response.body.quiz.questions.every(q => q.sourceReference === null));
     if (scenario.name.startsWith('180-page')) {
       assert.equal(response.body.metadata.documents[0].pageCount, 180);
       assert.equal(response.body.metadata.documents[0].selection.applied, true);

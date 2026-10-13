@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import request from 'supertest';
 import { createApp } from '../app.js';
 import { createQuizGenerator } from '../openaiService.js';
+import { SUBJECTS } from '../shared/quiz.js';
 import { completedResponse, quizFixture, mockClient, pptx, pdf, docx, studyText } from './fixtures.js';
 
 const settings = { topic: 'Operating Systems', subject: 'cs', difficulty: 'intermediate', questionCount: 10 };
@@ -11,7 +12,7 @@ function appWithMock(options = {}) {
   const generate = createQuizGenerator({ client: mockClient(async params => {
     calls.push(params);
     const input = JSON.parse(params.input[0].content);
-    const original = { ...input.settings, subject: 'cs' };
+    const original = { ...input.settings, subject: Object.keys(SUBJECTS).find(id => SUBJECTS[id] === input.settings.subject) };
     return completedResponse(quizFixture(original, input.studyMaterials));
   }) });
   return { app: createApp({ generate, ...options }), calls };

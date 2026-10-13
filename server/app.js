@@ -6,7 +6,7 @@ import multer from 'multer';
 import { upload } from './uploads.js';
 import { validateSettings } from './validation.js';
 import { processDocuments } from './documents/index.js';
-import { createQuizGenerator } from './openaiService.js';
+import { createQuizGenerator, GENERATION_VERSION } from './openaiService.js';
 import { AppError } from './errors.js';
 import { LIMITS } from './shared/quiz.js';
 
@@ -24,7 +24,7 @@ export function createApp({ env = process.env, generate, processFiles = processD
     }, methods: ['GET', 'POST'], credentials: false,
   }));
   app.get('/', (req, res) => res.json({ service: 'AI Quiz Generator', health: '/api/health' }));
-  app.get('/api/health', (req, res) => res.json({ status: 'ok', generationConfigured: Boolean(env.OPENAI_API_KEY || generate), limits: LIMITS }));
+  app.get('/api/health', (req, res) => res.json({ status: 'ok', generationConfigured: Boolean(env.OPENAI_API_KEY || generate), generationVersion: GENERATION_VERSION, limits: LIMITS }));
   const generator = generate || createQuizGenerator({ apiKey: env.OPENAI_API_KEY, model: env.OPENAI_MODEL || 'gpt-4o-mini' });
   const limiter = rateLimit({
     windowMs: 10 * 60 * 1000, limit: rateLimitMax, standardHeaders: 'draft-8', legacyHeaders: false,
@@ -79,7 +79,7 @@ export function createApp({ env = process.env, generate, processFiles = processD
       if (req.quizSignal.aborted) return;
       const files = req.files || [];
       const settings = validateSettings(req.body, files);
-      const documents = await processFiles(files, { signal: req.quizSignal });
+      const documents = files.length ? await processFiles(files, { signal: req.quizSignal }) : [];
       const { quiz, warnings, selections = [] } = await generator(settings, documents, { signal: req.quizSignal });
       if (req.quizSignal.aborted || res.headersSent) return;
       res.json({ quiz, metadata: {

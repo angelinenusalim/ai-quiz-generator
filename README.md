@@ -77,7 +77,7 @@ If any file fails, **the entire batch is rejected**. The error identifies failed
 
 ## Generation and grounding
 
-Topic-only requests explicitly use general knowledge with no uploaded sources; files-only requests infer the topic from the material; combined requests prioritize the material and use the topic as a focus. A missing-input error is shown only when both the topic and files are absent. If the model incorrectly demands materials for a topic-only quiz, that response is rejected and retried.
+Topic-only requests explicitly use general knowledge with no uploaded sources; files-only requests infer the topic from the material; combined requests prioritize the material and use the topic as a focus. A missing-input error is shown only when both the topic and files are absent. Topic-only requests bypass the file processor entirely and omit document/assignment fields from the AI input. Their response schema permits only `ready` or `unsupported_topic`, while uploaded-material requests permit `ready` or `insufficient_material`. If the model incorrectly demands files for topic-only generation, that response is rejected and retried with specific general-knowledge feedback; after two invalid attempts the backend returns `INVALID_AI_RESPONSE` with a safe machine-readable cause. A genuinely unclear/unverifiable topic returns `TOPIC_UNCLEAR`; the model is not told to invent facts.
 
 The server uses the [OpenAI Responses API with strict structured outputs](https://developers.openai.com/api/docs/guides/structured-outputs?api-mode=responses), then validates both the schema and application rules. It requires the exact question count, unique question IDs, distinct options and question text, a valid answer letter, and the selected subject/difficulty. Incomplete and invalid output cannot become a successful quiz; recoverable failures get one retry.
 
@@ -87,7 +87,7 @@ These checks establish structural correctness and citation existence. They canno
 
 ## API
 
-`GET /api/health` returns liveness, `generationConfigured`, and upload limits. Liveness succeeds even if a key is missing; it does not verify credentials or available API credit.
+`GET /api/health` returns liveness, `generationConfigured`, `generationVersion`, and upload limits. The corrected topic-mode implementation reports `generationVersion: "topic-modes-v2"`. Liveness succeeds even if a key is missing; it does not verify credentials or available API credit.
 
 `POST /api/generate` accepts JSON for topic-only generation:
 
@@ -97,7 +97,7 @@ These checks establish structural correctness and citation existence. They canno
 
 For uploads, send `multipart/form-data` with the same four fields and repeated `files` fields. A blank topic is allowed with files. Subjects are `general`, `math`, `cs`, `physics`, `biology`, `chemistry`, `english`, `mandarin`, `geography`, `psychology`, and `history`; difficulty is `beginner`, `intermediate`, or `advanced`.
 
-Success returns `{ quiz, metadata }`. `quiz` contains a title, subject, difficulty, and structured questions with A–D options, correct answers, explanations, and nullable source references. Metadata identifies processed documents, extraction counts, and warnings. The browser hides answer keys until submission; this is a practice tool, not a secured exam platform.
+Success returns `{ quiz, metadata }`. `quiz` contains a title, subject, difficulty, and structured questions with A–D options, correct answers, explanations, and nullable source references. Metadata identifies processed documents, extraction counts, and warnings. Invalid model responses include safe `details.sourceMode`, `details.attempts`, and `details.cause` diagnostics. OpenAI request throttling (`AI_RATE_LIMIT`) is distinct from a provider-reported exhausted quota (`AI_QUOTA_EXCEEDED`). The browser hides answer keys until submission; this is a practice tool, not a secured exam platform.
 
 Failures use `{ "error": { "code": "...", "message": "...", "details": {} } }`, with appropriate 400/413/415/422/429/502/503/504 status codes. Details are optional and include file-specific failures when relevant. No stack traces are returned.
 
@@ -133,7 +133,7 @@ Live OpenAI smoke tests (use actual API credit):
 npm run test:live --prefix server
 ```
 
-This covers Operating Systems with 10 questions, PPTX-only, small PDF-only, mixed PPTX/PDF, a 180-page PDF with citations across all thirds, combined DOCX/Markdown, and a Leader Election focus. To reuse the existing linked Railway credentials without saving them locally, run `railway run --service divine-achievement --environment production npm run test:live --prefix server`. It refuses to run without a configured key. Inspect generated educational quality separately: automated checks validate structure and references, not every fact.
+This covers Rabbit/Biology, Data Structures/Computer Science, Newton’s Laws/Physics, Algebra/Mathematics (all without files), standalone Markdown, Operating Systems with 10 questions, PPTX-only, small PDF-only, mixed PPTX/PDF, a 180-page PDF with citations across all thirds, combined DOCX/Markdown, and a Leader Election focus. To reuse the existing linked Railway credentials without saving them locally, run `railway run --service divine-achievement --environment production npm run test:live --prefix server`. It refuses to run without a configured key. Inspect generated educational quality separately: automated checks validate structure and references, not every fact.
 
 See [VERIFICATION.md](VERIFICATION.md) for the tests actually executed in this implementation and the limits of local verification.
 
@@ -179,3 +179,13 @@ The rate limiter and concurrent-request cap are in-memory per process. For multi
 `server/shared/quiz.js` holds constants, the strict schema, semantic validation, and scoring. `server/app.js` contains API routing and request lifecycle handling; `server/openaiService.js` handles generation; `server/uploads.js` handles bounded multipart input; `server/documents/` contains parsers and worker management. The client uses `App.jsx`, `components/FileUpload.jsx`, `components/QuizQuestion.jsx`, `components/QuizResults.jsx`, and `services/api.js`.
 
 Runtime additions: Multer, pdf-parse, fast-xml-parser, yauzl, Ajv, Helmet, and express-rate-limit. OpenAI, Express, and dotenv were updated. Vite's old alias was replaced with a supported Vite release. Test dependencies include Supertest, JSZip, pdf-lib, Vitest, jsdom, Testing Library, Playwright, and axe. React Markdown was removed because quiz rendering now uses structured objects and escaped React text.
+
+## Deploying the topic-mode fix to the existing Railway service
+
+The deployed Netlify bundle already uses the current client and correct Railway origin. This topic-mode fix changes backend code only; no Netlify redeploy, API-key replacement, or environment change is required. Railway must receive the updated **source**, not just restart/redeploy the existing uploaded snapshot. If using a GitHub-connected service, deploy the commit containing these backend changes. For the currently linked CLI-upload workflow, run this from the repository root after reviewing the changes:
+
+```sh
+railway up server --path-as-root --service divine-achievement --environment production
+```
+
+This uploads the self-contained server directory as the deployment root, consistent with the existing root-null deployment. Keep Railway’s existing secrets and settings. After deploying, check [Railway health](https://divine-achievement-production-5191.up.railway.app/api/health) for `generationVersion: "topic-modes-v2"`, then try Rabbit / Biology without files on the Netlify site. A successful redeploy status alone does not establish that the new source was uploaded.
